@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 
 from app.database import engine
-from app.routers import transactions
+from app.routers import expenses, income, summary
 
 
 @asynccontextmanager
@@ -22,7 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(transactions.router)
+app.include_router(expenses.router)
+app.include_router(income.router)
+app.include_router(summary.router)
 
 
 @app.get("/health")

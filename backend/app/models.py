@@ -1,12 +1,35 @@
 from datetime import date, datetime
-from typing import Optional
+from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field
 
 
-class Transaction(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+class Expense(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     description: str
     amount: float
     category: str
     date: date
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ExpenseCreate(SQLModel):
+    description: str
+    amount: float
+    category: str
+    date: date
+
+
+class Income(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    description: str
+    amount: float
+    source: str
+    date: date
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class IncomeCreate(SQLModel):
+    description: str
+    amount: float
+    source: str
+    date: date
