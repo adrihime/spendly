@@ -1,5 +1,5 @@
-export type ExpenseCategory = "carro" | "contas" | "cartao"
-export type IncomeCategory = "pagamento" | "salario" | "venda"
+export type ExpenseCategory = 'carro' | 'contas' | 'cartao'
+export type IncomeCategory = 'pagamento' | 'salario' | 'venda'
 
 export interface Expense {
   id: string
@@ -9,7 +9,7 @@ export interface Expense {
   date: string
 }
 
-export type ExpenseCreate = Omit<Expense, "id">
+export type ExpenseCreate = Omit<Expense, 'id'>
 
 export interface Income {
   id: string
@@ -20,8 +20,6 @@ export interface Income {
   date: string
 }
 
-export type IncomeCreate = Omit<Income, "id">
+export type IncomeCreate = Omit<Income, 'id'>
 
-export type Transaction =
-  | ({ type: "expense" } & Expense)
-  | ({ type: "income" } & Income)
+export type Transaction = ({ type: 'expense' } & Expense) | ({ type: 'income' } & Income)

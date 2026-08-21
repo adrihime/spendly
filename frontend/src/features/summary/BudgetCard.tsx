@@ -1,25 +1,30 @@
-import { Card } from "@/components/ui/card";
-import type { Transaction } from "@/shared/types/transaction";
+import { Card } from '@/components/ui/card'
+import type { Transaction } from '@/shared/types/transaction'
+import { TransactionRow } from './TransactionRow'
+import { formatCurrency } from '@/shared/utils/format'
 
-interface BudgetCardProps {
-  transaction: Transaction;
-}
-
-export function BudgetCard({ transaction }: BudgetCardProps) {
+export function BudgetCard({
+  transaction,
+  type,
+}: {
+  transaction: Transaction[]
+  type: 'income' | 'expense'
+}) {
+  const total = transaction.reduce((sum, item) => sum + item.amount, 0)
   return (
-    <Card>
-      <div className="header flex items-center p-4 gap-2">
-        <p className="text-sm">{transaction.description}</p>
-        <p className="text-sm">{transaction.amount}</p>
+    <Card className="p-4">
+      <span className="uppercase text-base text-zinc-200 flex justify-between">
+        <span className="text-xs text-blue-300">{type === 'income' ? 'Receitas' : 'Despesas'}</span>
+        <span>{formatCurrency(total)}</span>
+      </span>
+      <div className="grid grid-cols-3 gap-5 text-xs uppercase text-zinc-400 border-b border-zinc-700 pb-2">
+        <span>Descrição</span>
+        <span>Categoria</span>
+        <span>Valor</span>
       </div>
-      {transaction.type === "expense" && (
-        <p className="text-xs text-muted-foreground px-4 pb-4">{transaction.category}</p>
-      )}
-      {transaction.type === "income" && (
-        <p className="text-xs text-muted-foreground px-4 pb-4">
-          {transaction.account} · {transaction.category}
-        </p>
-      )}
+      {transaction.map((item) => (
+        <TransactionRow key={item.id} transaction={item} />
+      ))}
     </Card>
-  );
+  )
 }
