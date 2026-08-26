@@ -1,0 +1,35 @@
+services:
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - DATABASE_URL=sqlite:////data/spendly.db
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - OWNER_EMAIL=${OWNER_EMAIL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS}
+    volumes:
+      - spendly-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_USE_MOCK_API: ${VITE_USE_MOCK_API:-false}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  spendly-data:
