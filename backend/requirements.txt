@@ -3,3 +3,7 @@ uvicorn[standard]
 sqlmodel
 alembic
 python-multipart
+google-auth
+requests
+pyjwt
+python-dotenv

@@ -5,8 +5,9 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Expense, ExpenseCreate
+from app.routers.auth import require_user
 
-router = APIRouter(prefix="/expenses", tags=["expenses"])
+router = APIRouter(prefix="/expenses", tags=["expenses"], dependencies=[Depends(require_user)])
 
 
 @router.get("/", response_model=List[Expense])

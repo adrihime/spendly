@@ -5,8 +5,9 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Income, IncomeCreate
+from app.routers.auth import require_user
 
-router = APIRouter(prefix="/income", tags=["income"])
+router = APIRouter(prefix="/income", tags=["income"], dependencies=[Depends(require_user)])
 
 
 @router.get("/", response_model=List[Income])
