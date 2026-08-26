@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getCategoryLabel } from '@/shared/config/categories'
-import type { Transaction, TransactionType } from '@/shared/types/transaction'
+import type { Expense, Transaction, TransactionType } from '@/shared/types/transaction'
 import { TransactionRow } from './TransactionRow'
 import { TransactionFormDialog } from './TransactionFormDialog'
 import { PaidCheckbox, type PaidCheckboxState } from './PaidCheckbox'
@@ -126,7 +126,7 @@ export function BudgetCard({
         ? 'unchecked'
         : 'indeterminate'
 
-  const setAllPaid = useMutation({
+  const setAllPaid = useMutation<void, Error, boolean, { previous?: Expense[] }>({
     mutationFn: async (paid: boolean) => {
       const targets = transactions.filter((item) => item.type === 'expense' && item.paid !== paid)
       await Promise.all(
@@ -137,17 +137,31 @@ export function BudgetCard({
         }),
       )
     },
+    onMutate: async (paid) => {
+      await queryClient.cancelQueries({ queryKey: ['expenses'] })
+      const previous = queryClient.getQueryData<Expense[]>(['expenses'])
+      const targetIds = new Set(
+        transactions.filter((item) => item.type === 'expense').map((item) => item.id),
+      )
+      queryClient.setQueryData<Expense[]>(['expenses'], (old) =>
+        old?.map((item) => (targetIds.has(item.id) ? { ...item, paid } : item)),
+      )
+      return { previous }
+    },
     onSuccess: (_result, paid) => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] })
-      queryClient.invalidateQueries({ queryKey: ['summary'] })
       toast.add({
         title: paid ? 'Todas marcadas como pagas' : 'Todas marcadas como pendentes',
         type: 'success',
         timeout: 2000,
       })
     },
-    onError: () => {
+    onError: (_error, _paid, context) => {
+      if (context?.previous) queryClient.setQueryData(['expenses'], context.previous)
       toast.add({ title: 'Não deu pra atualizar as despesas', type: 'error', timeout: 2500 })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['summary'] })
     },
   })
 

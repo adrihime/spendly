@@ -39,7 +39,14 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
     queryClient.invalidateQueries({ queryKey: ['summary'] })
   }
 
-  const updateTransaction = useMutation<Expense | Income, Error, TransactionPatch>({
+  const listKey = transaction.type === 'income' ? ['income'] : ['expenses']
+
+  const updateTransaction = useMutation<
+    Expense | Income,
+    Error,
+    TransactionPatch,
+    { previous?: (Expense | Income)[] }
+  >({
     mutationFn: (patch) => {
       if (transaction.type === 'income') {
         const { id, ...rest } = transaction
@@ -56,12 +63,25 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         category: (patch.category as ExpenseCategory) ?? rest.category,
       })
     },
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: listKey })
+      const previous = queryClient.getQueryData<(Expense | Income)[]>(listKey)
+      queryClient.setQueryData<(Expense | Income)[]>(listKey, (old) =>
+        old?.map((item) =>
+          item.id === transaction.id ? ({ ...item, ...patch } as Expense | Income) : item,
+        ),
+      )
+      return { previous }
+    },
     onSuccess: () => {
-      invalidateAll()
       toast.add({ title: 'Transação atualizada', type: 'success', timeout: 2000 })
     },
-    onError: () => {
+    onError: (_error, _patch, context) => {
+      if (context?.previous) queryClient.setQueryData(listKey, context.previous)
       toast.add({ title: 'Não deu pra atualizar a transação', type: 'error', timeout: 2500 })
+    },
+    onSettled: () => {
+      invalidateAll()
     },
   })
 
@@ -79,6 +99,19 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
       toast.add({ title: 'Não deu pra excluir a transação', type: 'error', timeout: 2500 })
     },
   })
+
+  function confirmDelete() {
+    toast.add({
+      title: 'Excluir transação?',
+      description: transaction.description,
+      type: 'warning',
+      timeout: 6000,
+      actionProps: {
+        children: 'Excluir',
+        onClick: () => deleteTransaction.mutate(),
+      },
+    })
+  }
 
   function saveDescription(value: string) {
     const description = value.trim()
@@ -174,8 +207,11 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         <TooltipTrigger
           render={
             <Trash
-              onClick={() => deleteTransaction.mutate()}
-              className="w-4 h-4 cursor-pointer hover:text-red-600"
+              onClick={confirmDelete}
+              className={cn(
+                'w-4 h-4 cursor-pointer hover:text-red-600',
+                deleteTransaction.isPending && 'pointer-events-none opacity-50 animate-pulse',
+              )}
             />
           }
         />
