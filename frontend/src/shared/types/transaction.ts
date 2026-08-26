@@ -1,3 +1,5 @@
+export type TransactionType = 'income' | 'expense'
+
 export type ExpenseCategory = 'carro' | 'contas' | 'cartao'
 export type IncomeCategory = 'pagamento' | 'salario' | 'venda'
 
@@ -7,6 +9,7 @@ export interface Expense {
   category: ExpenseCategory
   amount: number
   date: string
+  paid: boolean
 }
 
 export type ExpenseCreate = Omit<Expense, 'id'>

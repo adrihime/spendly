@@ -9,6 +9,7 @@ class Expense(SQLModel, table=True):
     amount: float
     category: str
     date: date
+    paid: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -17,6 +18,7 @@ class ExpenseCreate(SQLModel):
     amount: float
     category: str
     date: date
+    paid: bool = False
 
 
 class Income(SQLModel, table=True):
