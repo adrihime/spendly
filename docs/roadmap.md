@@ -113,67 +113,70 @@ você troca os componentes pelos do Nafto depois.
 
 ## 3. Features de produto (backlog)
 
-### 3.1 Copiar despesas de um mês pro outro
-Contas recorrentes (aluguel, assinaturas) se repetem. Botão "copiar despesas
-de <mês anterior>" que clona pro mês atual.
+Todas mexem em schema. Hoje é `create_all` só → **PR A configura Alembic**
+antes de qualquer uma (o `expense`/`income` de prod está vazio agora, momento
+ideal).
 
-- Backend: `POST /expenses/copy` com `{from: {month, year}, to: {month, year}}`
-  → clona cada despesa do mês origem, data ajustada pro destino (mesmo dia,
-  clampado em meses curtos), `paid=false`, ids novos. Devolve a lista criada.
-- Decisões: copiar todas ou só as marcadas como recorrentes (precisaria de um
-  flag `recurring` na despesa)? Pular se já existe despesa com mesma descrição
-  no destino (dedupe)?
-- **Sem mudança de schema** (a menos que entre o flag `recurring`). Fácil —
-  1 endpoint + botão.
+### PR A — Alembic + tirar `account` de Income
+- `alembic init`, env apontando pro `DATABASE_URL`, migration baseline = schema
+  atual.
+- **Tira `Income.account` / `IncomeCreate.account`** — o usuário não rastreia
+  em qual conta a renda cai; o campo é write-only (nunca exibido). Migration
+  dropa a coluna (SQLite via batch mode; tabela vazia, trivial).
+- Frontend: tira `account` do type `Income` e o input "Conta" do
+  `TransactionFormDialog` (só aparecia pra renda) + o `isValid` que o exigia.
+- Pequeno, sem risco, destrava o resto.
 
-### 3.2 Destino do pagamento (conta própria ou não)
-Distinguir se um `pagamento` (renda) cai numa conta sua — é renda de verdade,
-afeta patrimônio — ou não (passa por você, não é seu).
+### PR B — Despesa de terceiro (era 3.2)
+"Compra num cartão meu que **não é minha**" (rachado com alguém, cartão
+adicional). Não é transferência interna.
 
-- Schema: `Income.to_own_account: bool` (default `true`). **Primeira migration
-  numa tabela que já tem dado.**
-- `/summary`: `total_income` / `net_savings` / `opening_balance` /
-  `accumulated_balance` passam a contar só `to_own_account = true` (ou expor
-  as duas visões).
-- Frontend: checkbox no form de renda.
-- Médio — código simples, mas é a primeira migration + muda a semântica da
-  matemática financeira.
+- Schema: `Expense.third_party: bool` (default `false`).
+- `/summary` (opção B escolhida): `total_expenses` mostra **tudo** (você
+  precisa saber a fatura inteira); novo `third_party_expenses` como sub-total;
+  `net_savings = total_income − (total_expenses − third_party_expenses)` — só
+  as **suas** despesas contam contra a economia. `opening_balance` idem.
+- Frontend: checkbox no form de despesa + exibir o sub-total no BalanceCard.
+- Médio.
 
-### 3.3 Parcelas nas despesas
-"R$ 1.200 em 12x".
+### PR C — Despesas recorrentes / parceladas (era 3.1 + 3.3, unificadas)
+Na criação da despesa: "repetir por [N] meses" **ou** "indefinido". O app
+materializa as linhas mensais.
 
-- Schema: `Expense.installment_current: int | None`,
-  `Expense.installment_total: int | None`,
-  `Expense.installment_group: UUID | None` (linka as parcelas). **Migration.**
-- Decisão central: **1 linha** ("1200, 12x") ou **N linhas** (100 cada, uma
-  por mês)?
-  - 1 linha: simples, mas R$ 1.200 bate num mês só — errado pro fluxo de
-    caixa (você paga 100/mês).
-  - N linhas linkadas por `installment_group`: certo pro orçamento mensal,
-    mas precisa de operações de grupo (editar/excluir a série toda).
-  - Recomendação: N linhas. Gera na criação, cada uma no mês+i, valor =
-    total/N (a última pega o resto do arredondamento).
-- Médio-alto — a abordagem certa (linhas linkadas) exige CRUD de série nos
-  dois lados.
+- Schema em `Expense`:
+  - `series_id: UUID | None` — igual em todas as linhas da série
+  - `series_index: int | None` — 1, 2, 3… (mostra "3/20")
+  - `series_total: int | None` — N; **`None` = indefinido**
+- **Valor é o da parcela** que o usuário digita (sem dividir total
+  automático). "Carro R$880 x 20" → 20 linhas de R$880.
+- `paid` é por linha (marca conforme paga).
+- **Fim definido (N):** gera as N linhas na criação, mês base + 0..N-1.
+- **Indefinido:** gera janela rolante de ~24 meses; quando o usuário abre um
+  mês além da janela, o `GET /expenses/?month=&year=` materializa as linhas
+  faltantes das séries ativas naquele mês (lazy top-up). Alternativa se
+  complicar: entidade `Recurrence` separada + materialização — mais limpo
+  conceitualmente, mas todo path de leitura vira recurrence-aware.
+- Editar/excluir linha de série: **"só esta / esta e as futuras / série
+  toda"** (igual evento recorrente do Google Agenda). Endpoints tipo
+  `PATCH /expenses/{id}?scope=this|future|all`.
+- Substitui o "copiar mês a mês" original — configura recorrente uma vez.
+- Maior das três.
 
 ### Notas transversais
-- **3.1 e 3.3 se sobrepõem**: parcela é despesa recorrente auto-gerada;
-  "copiar mês a mês" é recorrência manual. Um conceito unificado de "despesa
-  recorrente/agendada" cobriria os dois, mas é design maior. Por ora,
-  separadas.
-- **Pré-requisito de 3.2 e 3.3**: Alembic configurado (hoje é `create_all`
-  só; coluna nova em tabela com dado precisa de migration de verdade). Ver
-  bloco 1.
 - `category` livre hoje aceita "Compras" (despesa) e "Poupança" (renda) que
-  a tua planilha usa e o enum do frontend não tem — alinhar o enum quando
-  fizer o TODO #5 do `backend/TODO.md`.
+  a planilha do usuário usa e o enum do frontend não tem — alinhar o enum no
+  TODO #5 do `backend/TODO.md`. Bom fazer junto com PR B (mesma tabela).
+- Multi-user (bloco 1) e essas features todas mexem em schema — se for fazer
+  os dois, Alembic uma vez só serve pra ambos.
 
 ---
 
 ## Sequência geral sugerida
 
-1. ~~PR de filtro/summary + testes~~ — mergeado (#2)
-2. `3.1` copiar despesas — rápido, sem migration, dá pra fazer isolado
-3. Bloco 1 (multi-user) + Alembic — desbloqueia `3.2` e `3.3`
-4. `3.2` destino do pagamento, `3.3` parcelas
-5. Bloco 2, PRs 2.1 → 2.8 na ordem da tabela
+1. ~~PR filtro/summary + testes~~ — mergeado (#2)
+2. ~~PR prod hardening~~ — mergeado (#3)
+3. **PR A** — Alembic + tirar `account` de Income
+4. **PR B** — despesa de terceiro (+ enum de categoria, opcional)
+5. **PR C** — recorrentes / parceladas
+6. Bloco 1 (multi-user) — Alembic já estará pronto
+7. Bloco 2, PRs 2.1 → 2.8
