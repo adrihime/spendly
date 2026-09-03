@@ -147,10 +147,19 @@ export function TransactionRow({
 
   const categories = transaction.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
+  const isThirdParty = transaction.type === 'expense' && transaction.third_party
+
   const descriptionCell = (
     <EditableCell
       value={transaction.description}
-      displayValue={transaction.description}
+      displayValue={
+        <span className="flex items-center gap-2">
+          {transaction.description}
+          {isThirdParty && (
+            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm text-zinc-400">terceiro</span>
+          )}
+        </span>
+      }
       onSave={saveDescription}
       disabled={updateTransaction.isPending}
     />

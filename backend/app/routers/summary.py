@@ -20,9 +20,20 @@ def _by_category(session: Session, model, start: date, end: date) -> dict[str, f
     return {category: amount for category, amount in rows}
 
 
+def _expense_sum(session: Session, start: date, end: date, *, third_party: bool | None) -> float:
+    statement = select(func.sum(Expense.amount)).where(Expense.date >= start, Expense.date < end)
+    if third_party is not None:
+        statement = statement.where(Expense.third_party.is_(third_party))
+    return session.exec(statement).one() or 0.0
+
+
 def _balance_before(session: Session, start: date) -> float:
     income = session.exec(select(func.sum(Income.amount)).where(Income.date < start)).one() or 0.0
-    expenses = session.exec(select(func.sum(Expense.amount)).where(Expense.date < start)).one() or 0.0
+    expenses = session.exec(
+        select(func.sum(Expense.amount)).where(
+            Expense.date < start, Expense.third_party.is_(False)
+        )
+    ).one() or 0.0
     return income - expenses
 
 
@@ -38,12 +49,14 @@ def get_summary(
     income_by_category = _by_category(session, Income, start, end)
 
     total_expenses = sum(expenses_by_category.values())
+    third_party_expenses = _expense_sum(session, start, end, third_party=True)
     total_income = sum(income_by_category.values())
-    net_savings = total_income - total_expenses
+    net_savings = total_income - (total_expenses - third_party_expenses)
     opening_balance = _balance_before(session, start)
 
     return Summary(
         total_expenses=total_expenses,
+        third_party_expenses=third_party_expenses,
         total_income=total_income,
         net_savings=net_savings,
         expenses_by_category=expenses_by_category,

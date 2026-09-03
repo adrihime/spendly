@@ -10,6 +10,7 @@ class Expense(SQLModel, table=True):
     category: str
     date: date
     paid: bool = Field(default=False)
+    third_party: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -19,6 +20,7 @@ class ExpenseCreate(SQLModel):
     category: str
     date: date
     paid: bool = False
+    third_party: bool = False
 
 
 class Income(SQLModel, table=True):
@@ -39,6 +41,7 @@ class IncomeCreate(SQLModel):
 
 class Summary(SQLModel):
     total_expenses: float
+    third_party_expenses: float
     total_income: float
     net_savings: float
     expenses_by_category: dict[str, float]

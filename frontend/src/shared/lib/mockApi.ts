@@ -44,62 +44,13 @@ const cheapIncomeTemplates: Array<{
 ]
 
 const mockExpenses: Expense[] = [
-  {
-    id: '1',
-    description: 'Aluguel',
-    category: 'contas',
-    amount: 1500,
-    date: '2026-08-05',
-    paid: true,
-  },
-  {
-    id: '2',
-    description: 'Fatura do cartão',
-    category: 'cartao',
-    amount: 3090.5,
-    date: '2026-08-10',
-    paid: false,
-  },
-  {
-    id: '3',
-    description: 'Combustível',
-    category: 'carro',
-    amount: 320,
-    date: '2026-08-15',
-    paid: true,
-  },
-  {
-    id: '4',
-    description: 'Supermercado',
-    category: 'contas',
-    amount: 640,
-    date: '2026-07-20',
-    paid: true,
-  },
-  {
-    id: '5',
-    description: 'Manutenção do carro',
-    category: 'carro',
-    amount: 450,
-    date: '2026-07-12',
-    paid: true,
-  },
-  {
-    id: '6',
-    description: 'Conserto do carro',
-    category: 'carro',
-    amount: 4200,
-    date: '2026-06-08',
-    paid: false,
-  },
-  {
-    id: '7',
-    description: 'Aluguel',
-    category: 'contas',
-    amount: 1500,
-    date: '2026-06-05',
-    paid: true,
-  },
+  { id: '1', description: 'Aluguel', category: 'contas', amount: 1500, date: '2026-08-05', paid: true, third_party: false },
+  { id: '2', description: 'Fatura do cartão', category: 'cartao', amount: 3090.5, date: '2026-08-10', paid: false, third_party: false },
+  { id: '3', description: 'Combustível', category: 'carro', amount: 320, date: '2026-08-15', paid: true, third_party: false },
+  { id: '4', description: 'Compras da irmã', category: 'cartao', amount: 280, date: '2026-08-16', paid: false, third_party: true },
+  { id: '5', description: 'Supermercado', category: 'contas', amount: 640, date: '2026-07-20', paid: true, third_party: false },
+  { id: '6', description: 'Conserto do carro', category: 'carro', amount: 4200, date: '2026-06-08', paid: false, third_party: false },
+  { id: '7', description: 'Aluguel', category: 'contas', amount: 1500, date: '2026-06-05', paid: true, third_party: false },
   ...cheapExpenseTemplates.map((item, index) => ({
     id: `cheap-expense-${index + 1}`,
     description: item.description,
@@ -107,6 +58,7 @@ const mockExpenses: Expense[] = [
     amount: item.amount,
     date: `2026-08-${item.day}`,
     paid: index % 3 !== 0,
+    third_party: false,
   })),
 ]
 
@@ -244,16 +196,21 @@ export function enableApiMock() {
     const monthExpenses = filterByPeriod(mockExpenses, { month: Number(month), year: Number(year) })
     const monthIncome = filterByPeriod(mockIncome, { month: Number(month), year: Number(year) })
     const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amount, 0)
+    const thirdPartyExpenses = monthExpenses
+      .filter((item) => item.third_party)
+      .reduce((sum, item) => sum + item.amount, 0)
     const totalIncome = monthIncome.reduce((sum, item) => sum + item.amount, 0)
-    const netSavings = totalIncome - totalExpenses
+    const netSavings = totalIncome - (totalExpenses - thirdPartyExpenses)
 
     const start = new Date(Date.UTC(Number(year), Number(month) - 1, 1))
-    const openingBalance = sumBefore(mockIncome, start) - sumBefore(mockExpenses, start)
+    const ownExpensesBefore = mockExpenses.filter((item) => !item.third_party)
+    const openingBalance = sumBefore(mockIncome, start) - sumBefore(ownExpensesBefore, start)
 
     return [
       200,
       {
         total_expenses: totalExpenses,
+        third_party_expenses: thirdPartyExpenses,
         total_income: totalIncome,
         net_savings: netSavings,
         expenses_by_category: groupByCategory(monthExpenses),

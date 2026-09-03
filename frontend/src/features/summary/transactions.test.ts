@@ -9,6 +9,7 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
   amount: 1500,
   date: '2026-08-05',
   paid: true,
+  third_party: false,
   ...over,
 })
 

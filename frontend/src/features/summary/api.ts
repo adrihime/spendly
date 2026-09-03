@@ -3,6 +3,7 @@ import type { Expense, ExpenseCreate, Income, IncomeCreate } from '@/shared/type
 
 export interface Summary {
   total_expenses: number
+  third_party_expenses: number
   total_income: number
   net_savings: number
   expenses_by_category: Record<string, number>

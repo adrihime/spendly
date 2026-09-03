@@ -10,6 +10,7 @@ export interface Expense {
   amount: number
   date: string
   paid: boolean
+  third_party: boolean
 }
 
 export type ExpenseCreate = Omit<Expense, 'id'>

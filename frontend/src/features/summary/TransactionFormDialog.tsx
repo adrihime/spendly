@@ -45,6 +45,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
   const [category, setCategory] = useState<string>(categories[0])
   const [amount, setAmount] = useState('')
   const [paid, setPaid] = useState(false)
+  const [thirdParty, setThirdParty] = useState(false)
 
   function resetForm() {
     setDescription('')
@@ -52,6 +53,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
     setCategory(categories[0])
     setAmount('')
     setPaid(false)
+    setThirdParty(false)
   }
 
   const createTransaction = useMutation<Expense | Income, Error, void>({
@@ -71,6 +73,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
         category: category as ExpenseCategory,
         amount: parsedAmount,
         paid,
+        third_party: thirdParty,
       })
     },
     onSuccess: () => {
@@ -184,6 +187,14 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
               </div>
             )}
           </div>
+
+          {type === 'expense' && (
+            <PaidCheckbox
+              state={thirdParty ? 'checked' : 'unchecked'}
+              onClick={() => setThirdParty((prev) => !prev)}
+              label="Compra de terceiro"
+            />
+          )}
 
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancelar</DialogClose>

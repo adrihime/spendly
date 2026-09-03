@@ -1,4 +1,4 @@
-def add_expense(client, amount, category, date, paid=False):
+def add_expense(client, amount, category, date, paid=False, third_party=False):
     response = client.post(
         "/expenses/",
         json={
@@ -7,6 +7,7 @@ def add_expense(client, amount, category, date, paid=False):
             "category": category,
             "date": date,
             "paid": paid,
+            "third_party": third_party,
         },
     )
     assert response.status_code == 200
@@ -24,6 +25,7 @@ def test_summary_of_empty_month(client):
     body = client.get("/summary/8/2026").json()
     assert body == {
         "total_expenses": 0.0,
+        "third_party_expenses": 0.0,
         "total_income": 0.0,
         "net_savings": 0.0,
         "expenses_by_category": {},
@@ -31,6 +33,28 @@ def test_summary_of_empty_month(client):
         "opening_balance": 0.0,
         "accumulated_balance": 0.0,
     }
+
+
+def test_third_party_expense_does_not_count_against_savings(client):
+    add_income(client, 5000, "salario", "2026-08-05")
+    add_expense(client, 1500, "contas", "2026-08-10")
+    add_expense(client, 800, "cartao", "2026-08-15", third_party=True)
+
+    body = client.get("/summary/8/2026").json()
+
+    assert body["total_expenses"] == 2300
+    assert body["third_party_expenses"] == 800
+    assert body["net_savings"] == 3500  # 5000 - (2300 - 800)
+    assert body["expenses_by_category"] == {"contas": 1500, "cartao": 800}
+
+
+def test_third_party_expense_excluded_from_opening_balance(client):
+    add_income(client, 4000, "salario", "2026-06-05")
+    add_expense(client, 1000, "contas", "2026-06-10")
+    add_expense(client, 700, "cartao", "2026-06-12", third_party=True)
+
+    body = client.get("/summary/8/2026").json()
+    assert body["opening_balance"] == 3000  # 4000 - 1000, the 700 is not yours
 
 
 def test_totals_and_by_category(client):

@@ -13,6 +13,7 @@ const YEAR = 2026
 const EMPTY_SUMMARY: Summary = {
   total_income: 0,
   total_expenses: 0,
+  third_party_expenses: 0,
   net_savings: 0,
   expenses_by_category: {},
   income_by_category: {},
