@@ -29,6 +29,7 @@ import type {
   TransactionType,
 } from '@/shared/types/transaction'
 import { createExpense, createIncome } from './api'
+import { expenseKeys, incomeKeys } from './keys'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -76,8 +77,8 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] })
-      queryClient.invalidateQueries({ queryKey: ['income'] })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+      queryClient.invalidateQueries({ queryKey: incomeKeys.all })
       queryClient.invalidateQueries({ queryKey: ['summary'] })
       toast.add({
         title: type === 'income' ? 'Receita adicionada' : 'Despesa adicionada',

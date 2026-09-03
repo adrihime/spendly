@@ -37,3 +37,13 @@ class IncomeCreate(SQLModel):
     account: str
     category: str
     date: date
+
+
+class Summary(SQLModel):
+    total_expenses: float
+    total_income: float
+    net_savings: float
+    expenses_by_category: dict[str, float]
+    income_by_category: dict[str, float]
+    opening_balance: float
+    accumulated_balance: float

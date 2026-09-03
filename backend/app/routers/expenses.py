@@ -1,9 +1,11 @@
+from datetime import date
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.deps import period
 from app.models import Expense, ExpenseCreate
 from app.routers.auth import require_user
 
@@ -11,8 +13,14 @@ router = APIRouter(prefix="/expenses", tags=["expenses"], dependencies=[Depends(
 
 
 @router.get("/", response_model=List[Expense])
-def list_expenses(session: Session = Depends(get_session)):
-    return session.exec(select(Expense)).all()
+def list_expenses(
+    session: Session = Depends(get_session),
+    bounds: tuple[date, date] | None = Depends(period),
+):
+    statement = select(Expense)
+    if bounds:
+        statement = statement.where(Expense.date >= bounds[0], Expense.date < bounds[1])
+    return session.exec(statement.order_by(Expense.date)).all()
 
 
 @router.get("/{expense_id}", response_model=Expense)

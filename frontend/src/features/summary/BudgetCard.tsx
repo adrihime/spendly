@@ -11,6 +11,7 @@ import { TransactionFormDialog } from './TransactionFormDialog'
 import { PaidCheckbox, type PaidCheckboxState } from './PaidCheckbox'
 import { formatCurrency, formatMoney } from '@/shared/utils/format'
 import { updateExpense } from './api'
+import { expenseKeys } from './keys'
 import { sumAmount } from './transactions'
 import { toast } from '@/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -81,9 +82,13 @@ function SortableHeader({
 export function BudgetCard({
   transactions,
   type,
+  month,
+  year,
 }: {
   transactions: Transaction[]
   type: TransactionType
+  month: string
+  year: number
 }) {
   const queryClient = useQueryClient()
   const [sortField, setSortField] = useState<SortField | null>(null)
@@ -138,12 +143,13 @@ export function BudgetCard({
       )
     },
     onMutate: async (paid) => {
-      await queryClient.cancelQueries({ queryKey: ['expenses'] })
-      const previous = queryClient.getQueryData<Expense[]>(['expenses'])
+      const key = expenseKeys.list(month, year)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Expense[]>(key)
       const targetIds = new Set(
         transactions.filter((item) => item.type === 'expense').map((item) => item.id),
       )
-      queryClient.setQueryData<Expense[]>(['expenses'], (old) =>
+      queryClient.setQueryData<Expense[]>(key, (old) =>
         old?.map((item) => (targetIds.has(item.id) ? { ...item, paid } : item)),
       )
       return { previous }
@@ -156,11 +162,12 @@ export function BudgetCard({
       })
     },
     onError: (_error, _paid, context) => {
-      if (context?.previous) queryClient.setQueryData(['expenses'], context.previous)
+      if (context?.previous)
+        queryClient.setQueryData(expenseKeys.list(month, year), context.previous)
       toast.add({ title: 'Não deu pra atualizar as despesas', type: 'error', timeout: 2500 })
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
       queryClient.invalidateQueries({ queryKey: ['summary'] })
     },
   })
@@ -247,7 +254,7 @@ export function BudgetCard({
 
         <div className="scrollbar-thin md:flex-1 md:min-h-0 md:overflow-y-auto">
           {sortedTransactions.map((item) => (
-            <TransactionRow key={item.id} transaction={item} />
+            <TransactionRow key={item.id} transaction={item} month={month} year={year} />
           ))}
         </div>
       </CardContent>
