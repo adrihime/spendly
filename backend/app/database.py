@@ -3,7 +3,10 @@ from sqlmodel import create_engine, Session
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./spendly.db")
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=os.environ.get("SQL_ECHO", "").lower() in ("1", "true", "yes"),
+)
 
 
 def get_session():

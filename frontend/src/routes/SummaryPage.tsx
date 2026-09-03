@@ -1,40 +1,52 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { BalanceCard, BalanceCardSkeleton } from '@/features/summary/BalanceCard'
 import { BudgetCard, BudgetCardSkeleton } from '@/features/summary/BudgetCard'
 import { CategoryBalance, CategoryBalanceSkeleton } from '@/features/summary/CategoryBalance'
 import { MonthSelector } from '@/features/summary/MonthSelector'
 import { getSummary, listExpenses, listIncome, type Summary } from '@/features/summary/api'
-import { toMonthlyTransactions } from '@/features/summary/transactions'
+import { expenseKeys, incomeKeys } from '@/features/summary/keys'
+import { withType } from '@/features/summary/transactions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const YEAR = 2026
-const EMPTY_SUMMARY: Summary = { total_income: 0, total_expenses: 0, net_savings: 0 }
+const EMPTY_SUMMARY: Summary = {
+  total_income: 0,
+  total_expenses: 0,
+  net_savings: 0,
+  expenses_by_category: {},
+  income_by_category: {},
+  opening_balance: 0,
+  accumulated_balance: 0,
+}
 const FADE = 'animate-in fade-in duration-300'
 
 export function SummaryPage() {
-  const [month, setMonth] = useState('08')
+  const [month, setMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'))
 
   const { data: expenses = [], isPending: isExpensesPending } = useQuery({
-    queryKey: ['expenses'],
-    queryFn: listExpenses,
+    queryKey: expenseKeys.list(month, YEAR),
+    queryFn: () => listExpenses(month, YEAR),
+    placeholderData: keepPreviousData,
   })
   const { data: income = [], isPending: isIncomePending } = useQuery({
-    queryKey: ['income'],
-    queryFn: listIncome,
+    queryKey: incomeKeys.list(month, YEAR),
+    queryFn: () => listIncome(month, YEAR),
+    placeholderData: keepPreviousData,
   })
   const { data: summary = EMPTY_SUMMARY, isPending: isSummaryPending } = useQuery({
     queryKey: ['summary', month, YEAR],
     queryFn: () => getSummary(Number(month), YEAR),
+    placeholderData: keepPreviousData,
   })
 
   const isLoading = isExpensesPending || isIncomePending || isSummaryPending
 
-  const incomeTransactions = toMonthlyTransactions(income, 'income', month, YEAR)
-  const expenseTransactions = toMonthlyTransactions(expenses, 'expense', month, YEAR)
+  const incomeTransactions = withType(income, 'income')
+  const expenseTransactions = withType(expenses, 'expense')
 
-  const openingBalance = 0
-  const accumulatedBalance = openingBalance + summary.net_savings
+  const openingBalance = summary.opening_balance
+  const accumulatedBalance = summary.accumulated_balance
 
   return (
     <Tabs defaultValue="mes" className="flex-1 min-h-0">
@@ -67,8 +79,18 @@ export function SummaryPage() {
             </>
           ) : (
             <>
-              <BudgetCard type="income" transactions={incomeTransactions} />
-              <BudgetCard type="expense" transactions={expenseTransactions} />
+              <BudgetCard
+                type="income"
+                month={month}
+                year={YEAR}
+                transactions={incomeTransactions}
+              />
+              <BudgetCard
+                type="expense"
+                month={month}
+                year={YEAR}
+                transactions={expenseTransactions}
+              />
             </>
           )}
         </div>
@@ -84,8 +106,8 @@ export function SummaryPage() {
             </>
           ) : (
             <>
-              <CategoryBalance type="income" transactions={incomeTransactions} />
-              <CategoryBalance type="expense" transactions={expenseTransactions} />
+              <CategoryBalance type="income" byCategory={summary.income_by_category} />
+              <CategoryBalance type="expense" byCategory={summary.expenses_by_category} />
             </>
           )}
         </div>

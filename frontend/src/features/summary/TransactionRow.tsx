@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { deleteExpense, deleteIncome, updateExpense, updateIncome } from './api'
+import { expenseKeys, incomeKeys } from './keys'
 import { EditableCell } from './EditableCell'
 import { PaidCheckbox } from './PaidCheckbox'
 import { Copy, Trash } from 'lucide-react'
@@ -30,16 +31,25 @@ interface TransactionPatch {
   paid?: boolean
 }
 
-export function TransactionRow({ transaction }: { transaction: Transaction }) {
+export function TransactionRow({
+  transaction,
+  month,
+  year,
+}: {
+  transaction: Transaction
+  month: string
+  year: number
+}) {
   const queryClient = useQueryClient()
 
   function invalidateAll() {
-    queryClient.invalidateQueries({ queryKey: ['expenses'] })
-    queryClient.invalidateQueries({ queryKey: ['income'] })
+    queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+    queryClient.invalidateQueries({ queryKey: incomeKeys.all })
     queryClient.invalidateQueries({ queryKey: ['summary'] })
   }
 
-  const listKey = transaction.type === 'income' ? ['income'] : ['expenses']
+  const listKey =
+    transaction.type === 'income' ? incomeKeys.list(month, year) : expenseKeys.list(month, year)
 
   const updateTransaction = useMutation<
     Expense | Income,

@@ -3,9 +3,8 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getCategoryLabel } from '@/shared/config/categories'
-import type { Transaction, TransactionType } from '@/shared/types/transaction'
+import type { TransactionType } from '@/shared/types/transaction'
 import { formatCurrency, formatMoney } from '@/shared/utils/format'
-import { groupByCategory, sumAmount } from './transactions'
 
 export function CategoryBalanceSkeleton() {
   return (
@@ -33,13 +32,13 @@ export function CategoryBalanceSkeleton() {
 
 export function CategoryBalance({
   type,
-  transactions,
+  byCategory,
 }: {
   type: TransactionType
-  transactions: Transaction[]
+  byCategory: Record<string, number>
 }) {
-  const categories = groupByCategory(transactions)
-  const total = sumAmount(transactions)
+  const categories = Object.entries(byCategory).sort(([, a], [, b]) => b - a)
+  const total = categories.reduce((sum, [, amount]) => sum + amount, 0)
   const maxAmount = Math.max(...categories.map(([, amount]) => amount), 1)
 
   return (
