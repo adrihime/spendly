@@ -27,21 +27,20 @@ const cheapExpenseTemplates: Array<{ description: string; category: ExpenseCateg
 
 const cheapIncomeTemplates: Array<{
   description: string
-  account: string
   category: IncomeCategory
   amount: number
   day: string
 }> = [
-  { description: 'Cashback cartão', account: 'Nubank', category: 'venda', amount: 8.4, day: '02' },
-  { description: 'Reembolso Uber', account: 'Inter', category: 'pagamento', amount: 22.9, day: '03' },
-  { description: 'Venda roupa usada', account: 'Nubank', category: 'venda', amount: 45, day: '05' },
-  { description: 'Freela design', account: 'Inter', category: 'pagamento', amount: 180, day: '06' },
-  { description: 'Cashback compras', account: 'Nubank', category: 'venda', amount: 12.3, day: '08' },
-  { description: 'Reembolso farmácia', account: 'Inter', category: 'pagamento', amount: 18.9, day: '10' },
-  { description: 'Venda livro', account: 'Nubank', category: 'venda', amount: 25, day: '12' },
-  { description: 'Freela texto', account: 'Inter', category: 'pagamento', amount: 90, day: '14' },
-  { description: 'Cashback app', account: 'Nubank', category: 'venda', amount: 6.7, day: '16' },
-  { description: 'Reembolso viagem', account: 'Inter', category: 'pagamento', amount: 60, day: '18' },
+  { description: 'Cashback cartão', category: 'venda', amount: 8.4, day: '02' },
+  { description: 'Reembolso Uber', category: 'pagamento', amount: 22.9, day: '03' },
+  { description: 'Venda roupa usada', category: 'venda', amount: 45, day: '05' },
+  { description: 'Freela design', category: 'pagamento', amount: 180, day: '06' },
+  { description: 'Cashback compras', category: 'venda', amount: 12.3, day: '08' },
+  { description: 'Reembolso farmácia', category: 'pagamento', amount: 18.9, day: '10' },
+  { description: 'Venda livro', category: 'venda', amount: 25, day: '12' },
+  { description: 'Freela texto', category: 'pagamento', amount: 90, day: '14' },
+  { description: 'Cashback app', category: 'venda', amount: 6.7, day: '16' },
+  { description: 'Reembolso viagem', category: 'pagamento', amount: 60, day: '18' },
 ]
 
 const mockExpenses: Expense[] = [
@@ -112,42 +111,13 @@ const mockExpenses: Expense[] = [
 ]
 
 const mockIncome: Income[] = [
-  {
-    id: '1',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 6500,
-    date: '2026-08-05',
-  },
-  {
-    id: '2',
-    description: 'Freelance',
-    account: 'Inter',
-    category: 'pagamento',
-    amount: 1200,
-    date: '2026-08-18',
-  },
-  {
-    id: '3',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 3200,
-    date: '2026-06-05',
-  },
-  {
-    id: '4',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 950,
-    date: '2026-07-05',
-  },
+  { id: '1', description: 'Salário', category: 'salario', amount: 6500, date: '2026-08-05' },
+  { id: '2', description: 'Freelance', category: 'pagamento', amount: 1200, date: '2026-08-18' },
+  { id: '3', description: 'Salário', category: 'salario', amount: 3200, date: '2026-06-05' },
+  { id: '4', description: 'Salário', category: 'salario', amount: 950, date: '2026-07-05' },
   ...cheapIncomeTemplates.map((item, index) => ({
     id: `cheap-income-${index + 1}`,
     description: item.description,
-    account: item.account,
     category: item.category,
     amount: item.amount,
     date: `2026-08-${item.day}`,

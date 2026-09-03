@@ -15,7 +15,6 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
 const income = (over: Partial<Income> = {}): Income => ({
   id: '1',
   description: 'Salário',
-  account: 'Nubank',
   category: 'salario',
   amount: 6500,
   date: '2026-08-05',

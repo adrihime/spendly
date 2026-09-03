@@ -17,7 +17,6 @@ export type ExpenseCreate = Omit<Expense, 'id'>
 export interface Income {
   id: string
   description: string
-  account: string
   category: IncomeCategory
   amount: number
   date: string

@@ -15,13 +15,7 @@ def add_expense(client, amount, category, date, paid=False):
 def add_income(client, amount, category, date):
     response = client.post(
         "/income/",
-        json={
-            "description": "i",
-            "amount": amount,
-            "account": "Nubank",
-            "category": category,
-            "date": date,
-        },
+        json={"description": "i", "amount": amount, "category": category, "date": date},
     )
     assert response.status_code == 200
 

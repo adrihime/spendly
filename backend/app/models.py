@@ -25,7 +25,6 @@ class Income(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     description: str
     amount: float
-    account: str
     category: str
     date: date
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -34,7 +33,6 @@ class Income(SQLModel, table=True):
 class IncomeCreate(SQLModel):
     description: str
     amount: float
-    account: str
     category: str
     date: date
 

@@ -44,7 +44,6 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
   const [date, setDate] = useState(todayISO())
   const [category, setCategory] = useState<string>(categories[0])
   const [amount, setAmount] = useState('')
-  const [account, setAccount] = useState('')
   const [paid, setPaid] = useState(false)
 
   function resetForm() {
@@ -52,7 +51,6 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
     setDate(todayISO())
     setCategory(categories[0])
     setAmount('')
-    setAccount('')
     setPaid(false)
   }
 
@@ -65,7 +63,6 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
           date,
           category: category as IncomeCategory,
           amount: parsedAmount,
-          account,
         })
       }
       return createExpense({
@@ -94,10 +91,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
   })
 
   const parsedAmount = Number(amount.replace(',', '.'))
-  const isValid =
-    description.trim().length > 0 &&
-    Number.isFinite(parsedAmount) &&
-    (type === 'expense' || account.trim().length > 0)
+  const isValid = description.trim().length > 0 && Number.isFinite(parsedAmount)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -167,7 +161,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={type === 'expense' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-1'}>
             <div className="flex flex-col gap-1">
               <Label htmlFor="amount">Valor</Label>
               <Input
@@ -178,16 +172,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
                 onChange={(event) => setAmount(event.target.value)}
               />
             </div>
-            {type === 'income' ? (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="account">Conta</Label>
-                <Input
-                  id="account"
-                  value={account}
-                  onChange={(event) => setAccount(event.target.value)}
-                />
-              </div>
-            ) : (
+            {type === 'expense' && (
               <div className="flex flex-col gap-1">
                 <Label>Status</Label>
                 <PaidCheckbox
