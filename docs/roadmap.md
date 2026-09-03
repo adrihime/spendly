@@ -111,11 +111,16 @@ você troca os componentes pelos do Nafto depois.
 
 ---
 
-## 3. Features de produto (backlog)
+## 3. Features de produto
 
-Todas mexem em schema. Hoje é `create_all` só → **PR A configura Alembic**
-antes de qualquer uma (o `expense`/`income` de prod está vazio agora, momento
-ideal).
+**PRs A, B e C implementados** na branch `feat/recurring-thirdparty-expenses`
+(um PR só, 4 commits). Falta: revisar, mergear, e o deploy que precisa
+stampar/recriar o schema em prod pro Alembic (tabelas vazias → `alembic upgrade
+head` limpo).
+
+Diferido: editar série inteira de uma vez (edição inline continua linha-a-linha)
+· materialização lazy de verdade além da janela de 60 meses · alinhar o enum de
+`category` (TODO #5).
 
 ### PR A — Alembic + tirar `account` de Income
 - `alembic init`, env apontando pro `DATABASE_URL`, migration baseline = schema
@@ -175,8 +180,7 @@ materializa as linhas mensais.
 
 1. ~~PR filtro/summary + testes~~ — mergeado (#2)
 2. ~~PR prod hardening~~ — mergeado (#3)
-3. **PR A** — Alembic + tirar `account` de Income
-4. **PR B** — despesa de terceiro (+ enum de categoria, opcional)
-5. **PR C** — recorrentes / parceladas
-6. Bloco 1 (multi-user) — Alembic já estará pronto
-7. Bloco 2, PRs 2.1 → 2.8
+3. **PRs A+B+C** — `feat/recurring-thirdparty-expenses`, aguardando review/merge/deploy
+4. Enum de `category` (TODO #5) + editar série inteira
+5. Bloco 1 (multi-user) — Alembic já pronto
+6. Bloco 2, PRs 2.1 → 2.8
