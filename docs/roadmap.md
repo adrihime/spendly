@@ -111,8 +111,69 @@ você troca os componentes pelos do Nafto depois.
 
 ---
 
+## 3. Features de produto (backlog)
+
+### 3.1 Copiar despesas de um mês pro outro
+Contas recorrentes (aluguel, assinaturas) se repetem. Botão "copiar despesas
+de <mês anterior>" que clona pro mês atual.
+
+- Backend: `POST /expenses/copy` com `{from: {month, year}, to: {month, year}}`
+  → clona cada despesa do mês origem, data ajustada pro destino (mesmo dia,
+  clampado em meses curtos), `paid=false`, ids novos. Devolve a lista criada.
+- Decisões: copiar todas ou só as marcadas como recorrentes (precisaria de um
+  flag `recurring` na despesa)? Pular se já existe despesa com mesma descrição
+  no destino (dedupe)?
+- **Sem mudança de schema** (a menos que entre o flag `recurring`). Fácil —
+  1 endpoint + botão.
+
+### 3.2 Destino do pagamento (conta própria ou não)
+Distinguir se um `pagamento` (renda) cai numa conta sua — é renda de verdade,
+afeta patrimônio — ou não (passa por você, não é seu).
+
+- Schema: `Income.to_own_account: bool` (default `true`). **Primeira migration
+  numa tabela que já tem dado.**
+- `/summary`: `total_income` / `net_savings` / `opening_balance` /
+  `accumulated_balance` passam a contar só `to_own_account = true` (ou expor
+  as duas visões).
+- Frontend: checkbox no form de renda.
+- Médio — código simples, mas é a primeira migration + muda a semântica da
+  matemática financeira.
+
+### 3.3 Parcelas nas despesas
+"R$ 1.200 em 12x".
+
+- Schema: `Expense.installment_current: int | None`,
+  `Expense.installment_total: int | None`,
+  `Expense.installment_group: UUID | None` (linka as parcelas). **Migration.**
+- Decisão central: **1 linha** ("1200, 12x") ou **N linhas** (100 cada, uma
+  por mês)?
+  - 1 linha: simples, mas R$ 1.200 bate num mês só — errado pro fluxo de
+    caixa (você paga 100/mês).
+  - N linhas linkadas por `installment_group`: certo pro orçamento mensal,
+    mas precisa de operações de grupo (editar/excluir a série toda).
+  - Recomendação: N linhas. Gera na criação, cada uma no mês+i, valor =
+    total/N (a última pega o resto do arredondamento).
+- Médio-alto — a abordagem certa (linhas linkadas) exige CRUD de série nos
+  dois lados.
+
+### Notas transversais
+- **3.1 e 3.3 se sobrepõem**: parcela é despesa recorrente auto-gerada;
+  "copiar mês a mês" é recorrência manual. Um conceito unificado de "despesa
+  recorrente/agendada" cobriria os dois, mas é design maior. Por ora,
+  separadas.
+- **Pré-requisito de 3.2 e 3.3**: Alembic configurado (hoje é `create_all`
+  só; coluna nova em tabela com dado precisa de migration de verdade). Ver
+  bloco 1.
+- `category` livre hoje aceita "Compras" (despesa) e "Poupança" (renda) que
+  a tua planilha usa e o enum do frontend não tem — alinhar o enum quando
+  fizer o TODO #5 do `backend/TODO.md`.
+
+---
+
 ## Sequência geral sugerida
 
-1. PR de filtro/summary + testes (`feat/month-filtering-summary`) — **pronto, aguardando merge**
-2. Bloco 1 (multi-user) — decidir Alembic sim/não primeiro
-3. Bloco 2, PRs 2.1 → 2.8 na ordem da tabela
+1. ~~PR de filtro/summary + testes~~ — mergeado (#2)
+2. `3.1` copiar despesas — rápido, sem migration, dá pra fazer isolado
+3. Bloco 1 (multi-user) + Alembic — desbloqueia `3.2` e `3.3`
+4. `3.2` destino do pagamento, `3.3` parcelas
+5. Bloco 2, PRs 2.1 → 2.8 na ordem da tabela
