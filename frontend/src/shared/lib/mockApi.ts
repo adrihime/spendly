@@ -154,13 +154,28 @@ const mockIncome: Income[] = [
   })),
 ]
 
-function sumForMonth(items: { amount: number; date: string }[], month: number, year: number) {
+function isInMonth(date: string, month: number, year: number) {
+  const d = new Date(date)
+  return d.getUTCMonth() + 1 === month && d.getUTCFullYear() === year
+}
+
+function groupByCategory(items: { category: string; amount: number }[]) {
+  return items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.category] = (acc[item.category] ?? 0) + item.amount
+    return acc
+  }, {})
+}
+
+function sumBefore(items: { amount: number; date: string }[], start: Date) {
   return items
-    .filter((item) => {
-      const d = new Date(item.date)
-      return d.getUTCMonth() + 1 === month && d.getUTCFullYear() === year
-    })
+    .filter((item) => new Date(item.date) < start)
     .reduce((sum, item) => sum + item.amount, 0)
+}
+
+function filterByPeriod<T extends { date: string }>(items: T[], params: unknown): T[] {
+  const { month, year } = (params ?? {}) as { month?: number; year?: number }
+  if (!month || !year) return items
+  return items.filter((item) => isInMonth(item.date, Number(month), Number(year)))
 }
 
 const OWNER_EMAIL = import.meta.env.VITE_OWNER_EMAIL ?? 'gsadriel@gmail.com'
@@ -203,8 +218,8 @@ export function enableApiMock() {
 
   mock.onGet('/auth/me').reply(() => (mockUser ? [200, mockUser] : [401]))
 
-  mock.onGet('/expenses/').reply(() => [200, mockExpenses])
-  mock.onGet('/income/').reply(() => [200, mockIncome])
+  mock.onGet('/expenses/').reply((config) => [200, filterByPeriod(mockExpenses, config.params)])
+  mock.onGet('/income/').reply((config) => [200, filterByPeriod(mockIncome, config.params)])
 
   mock.onPost('/expenses/').reply((config) => {
     const expense = { id: `expense-${Date.now()}`, ...JSON.parse(config.data) }
@@ -256,15 +271,25 @@ export function enableApiMock() {
 
   mock.onGet(/\/summary\/\d+\/\d+/).reply((config) => {
     const [, month, year] = config.url!.match(/\/summary\/(\d+)\/(\d+)/)!
-    const totalExpenses = sumForMonth(mockExpenses, Number(month), Number(year))
-    const totalIncome = sumForMonth(mockIncome, Number(month), Number(year))
+    const monthExpenses = filterByPeriod(mockExpenses, { month: Number(month), year: Number(year) })
+    const monthIncome = filterByPeriod(mockIncome, { month: Number(month), year: Number(year) })
+    const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amount, 0)
+    const totalIncome = monthIncome.reduce((sum, item) => sum + item.amount, 0)
+    const netSavings = totalIncome - totalExpenses
+
+    const start = new Date(Date.UTC(Number(year), Number(month) - 1, 1))
+    const openingBalance = sumBefore(mockIncome, start) - sumBefore(mockExpenses, start)
 
     return [
       200,
       {
         total_expenses: totalExpenses,
         total_income: totalIncome,
-        net_savings: totalIncome - totalExpenses,
+        net_savings: netSavings,
+        expenses_by_category: groupByCategory(monthExpenses),
+        income_by_category: groupByCategory(monthIncome),
+        opening_balance: openingBalance,
+        accumulated_balance: openingBalance + netSavings,
       },
     ]
   })

@@ -5,15 +5,23 @@ export interface Summary {
   total_expenses: number
   total_income: number
   net_savings: number
+  expenses_by_category: Record<string, number>
+  income_by_category: Record<string, number>
+  opening_balance: number
+  accumulated_balance: number
 }
 
-export async function listExpenses() {
-  const { data } = await api.get<Expense[]>('/expenses/')
+export async function listExpenses(month: string, year: number) {
+  const { data } = await api.get<Expense[]>('/expenses/', {
+    params: { month: Number(month), year },
+  })
   return data
 }
 
-export async function listIncome() {
-  const { data } = await api.get<Income[]>('/income/')
+export async function listIncome(month: string, year: number) {
+  const { data } = await api.get<Income[]>('/income/', {
+    params: { month: Number(month), year },
+  })
   return data
 }
 
