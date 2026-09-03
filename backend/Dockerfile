@@ -13,4 +13,4 @@ RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin appuser \
 
 USER appuser
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
