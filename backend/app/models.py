@@ -11,6 +11,9 @@ class Expense(SQLModel, table=True):
     date: date
     paid: bool = Field(default=False)
     third_party: bool = Field(default=False)
+    series_id: UUID | None = Field(default=None, index=True)
+    series_index: int | None = Field(default=None)
+    series_total: int | None = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -21,6 +24,10 @@ class ExpenseCreate(SQLModel):
     date: date
     paid: bool = False
     third_party: bool = False
+
+
+class ExpenseNew(ExpenseCreate):
+    repeat_months: int | None = Field(default=1, ge=1, le=120)
 
 
 class Income(SQLModel, table=True):
