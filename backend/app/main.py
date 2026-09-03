@@ -3,11 +3,10 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import SQLModel
 
 load_dotenv()
 
-from app.database import engine
+from app.migrate import upgrade_to_head
 from app.routers import auth, expenses, income, summary
 
 FRONTEND_ORIGINS = [
@@ -19,7 +18,7 @@ FRONTEND_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    SQLModel.metadata.create_all(engine)
+    upgrade_to_head()
     yield
 
 

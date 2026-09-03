@@ -53,7 +53,12 @@ export function BalanceCard({
   accumulatedBalance: number
   openingBalance: number
 }) {
-  const { total_income: income, total_expenses: expenses, net_savings: netResult } = summary
+  const {
+    total_income: income,
+    total_expenses: expenses,
+    third_party_expenses: thirdParty,
+    net_savings: netResult,
+  } = summary
   const percentOfIncome = income > 0 ? (netResult / income) * 100 : 0
   const maxValue = Math.max(income, expenses, 1)
   const tier = getResultTier(percentOfIncome)
@@ -81,6 +86,11 @@ export function BalanceCard({
           <span className="text-sm text-white/60">
             <b>{formatMoney(income)}</b> de renda – <b>{formatMoney(expenses)}</b> de despesas
           </span>
+          {thirdParty > 0 && (
+            <span className="text-sm text-white/40">
+              {formatMoney(thirdParty)} de terceiros (fora da economia)
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col justify-center gap-3 py-4 md:px-6 md:py-0">

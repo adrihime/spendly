@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 sqlmodel
 alembic
+python-dateutil
 python-multipart
 google-auth
 requests

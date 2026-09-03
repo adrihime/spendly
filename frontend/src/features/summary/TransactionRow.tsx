@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { EXPENSE_CATEGORIES, getCategoryLabel, INCOME_CATEGORIES } from '@/shared/config/categories'
 import type {
@@ -5,11 +6,20 @@ import type {
   ExpenseCategory,
   Income,
   IncomeCategory,
+  SeriesScope,
   Transaction,
 } from '@/shared/types/transaction'
 import { formatCurrency } from '@/shared/utils/format'
 import { toast } from '@/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -41,6 +51,12 @@ export function TransactionRow({
   year: number
 }) {
   const queryClient = useQueryClient()
+  const [seriesDeleteOpen, setSeriesDeleteOpen] = useState(false)
+
+  const series =
+    transaction.type === 'expense' && transaction.series_id
+      ? { index: transaction.series_index, total: transaction.series_total }
+      : null
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: expenseKeys.all })
@@ -95,14 +111,15 @@ export function TransactionRow({
     },
   })
 
-  const deleteTransaction = useMutation<void, Error, void>({
-    mutationFn: () => {
+  const deleteTransaction = useMutation<void, Error, SeriesScope>({
+    mutationFn: (scope) => {
       return transaction.type === 'income'
         ? deleteIncome(transaction.id)
-        : deleteExpense(transaction.id)
+        : deleteExpense(transaction.id, scope)
     },
     onSuccess: () => {
       invalidateAll()
+      setSeriesDeleteOpen(false)
       toast.add({ title: 'Transação excluída', type: 'success', timeout: 2000 })
     },
     onError: () => {
@@ -111,6 +128,10 @@ export function TransactionRow({
   })
 
   function confirmDelete() {
+    if (series) {
+      setSeriesDeleteOpen(true)
+      return
+    }
     toast.add({
       title: 'Excluir transação?',
       description: transaction.description,
@@ -118,7 +139,7 @@ export function TransactionRow({
       timeout: 6000,
       actionProps: {
         children: 'Excluir',
-        onClick: () => deleteTransaction.mutate(),
+        onClick: () => deleteTransaction.mutate('this'),
       },
     })
   }
@@ -147,10 +168,26 @@ export function TransactionRow({
 
   const categories = transaction.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
+  const isThirdParty = transaction.type === 'expense' && transaction.third_party
+
   const descriptionCell = (
     <EditableCell
       value={transaction.description}
-      displayValue={transaction.description}
+      displayValue={
+        <span className="flex items-center gap-2">
+          {transaction.description}
+          {series && (
+            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm text-zinc-400">
+              {series.index}/{series.total ?? '∞'}
+            </span>
+          )}
+          {isThirdParty && (
+            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm text-zinc-400">
+              terceiro
+            </span>
+          )}
+        </span>
+      }
       onSave={saveDescription}
       disabled={updateTransaction.isPending}
     />
@@ -232,8 +269,39 @@ export function TransactionRow({
 
   const isPaidExpense = transaction.type === 'expense' && transaction.paid
 
+  const seriesDeleteDialog = (
+    <Dialog open={seriesDeleteOpen} onOpenChange={setSeriesDeleteOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Excluir despesa recorrente</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-zinc-400">{transaction.description}</p>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => deleteTransaction.mutate('this')}
+          >
+            Só esta
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => deleteTransaction.mutate('future')}
+          >
+            Esta e as próximas
+          </Button>
+          <Button className="w-full" onClick={() => deleteTransaction.mutate('all')}>
+            A série toda
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   return (
     <>
+      {seriesDeleteDialog}
       <div
         className={cn(
           'flex flex-col gap-1 border-b border-zinc-800 px-4 py-3 text-base hover:bg-zinc-800 transition-colors md:hidden',

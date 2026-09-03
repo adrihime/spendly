@@ -2,7 +2,12 @@ import MockAdapter from 'axios-mock-adapter'
 import { api } from './axios'
 import type { Expense, ExpenseCategory, Income, IncomeCategory } from '@/shared/types/transaction'
 
-const cheapExpenseTemplates: Array<{ description: string; category: ExpenseCategory; amount: number; day: string }> = [
+const cheapExpenseTemplates: Array<{
+  description: string
+  category: ExpenseCategory
+  amount: number
+  day: string
+}> = [
   { description: 'Café', category: 'cartao', amount: 12.5, day: '01' },
   { description: 'Uber', category: 'carro', amount: 18.9, day: '02' },
   { description: 'iFood', category: 'cartao', amount: 34.9, day: '02' },
@@ -27,127 +32,111 @@ const cheapExpenseTemplates: Array<{ description: string; category: ExpenseCateg
 
 const cheapIncomeTemplates: Array<{
   description: string
-  account: string
   category: IncomeCategory
   amount: number
   day: string
 }> = [
-  { description: 'Cashback cartão', account: 'Nubank', category: 'venda', amount: 8.4, day: '02' },
-  { description: 'Reembolso Uber', account: 'Inter', category: 'pagamento', amount: 22.9, day: '03' },
-  { description: 'Venda roupa usada', account: 'Nubank', category: 'venda', amount: 45, day: '05' },
-  { description: 'Freela design', account: 'Inter', category: 'pagamento', amount: 180, day: '06' },
-  { description: 'Cashback compras', account: 'Nubank', category: 'venda', amount: 12.3, day: '08' },
-  { description: 'Reembolso farmácia', account: 'Inter', category: 'pagamento', amount: 18.9, day: '10' },
-  { description: 'Venda livro', account: 'Nubank', category: 'venda', amount: 25, day: '12' },
-  { description: 'Freela texto', account: 'Inter', category: 'pagamento', amount: 90, day: '14' },
-  { description: 'Cashback app', account: 'Nubank', category: 'venda', amount: 6.7, day: '16' },
-  { description: 'Reembolso viagem', account: 'Inter', category: 'pagamento', amount: 60, day: '18' },
+  { description: 'Cashback cartão', category: 'venda', amount: 8.4, day: '02' },
+  { description: 'Reembolso Uber', category: 'pagamento', amount: 22.9, day: '03' },
+  { description: 'Venda roupa usada', category: 'venda', amount: 45, day: '05' },
+  { description: 'Freela design', category: 'pagamento', amount: 180, day: '06' },
+  { description: 'Cashback compras', category: 'venda', amount: 12.3, day: '08' },
+  { description: 'Reembolso farmácia', category: 'pagamento', amount: 18.9, day: '10' },
+  { description: 'Venda livro', category: 'venda', amount: 25, day: '12' },
+  { description: 'Freela texto', category: 'pagamento', amount: 90, day: '14' },
+  { description: 'Cashback app', category: 'venda', amount: 6.7, day: '16' },
+  { description: 'Reembolso viagem', category: 'pagamento', amount: 60, day: '18' },
 ]
 
+type ExpenseSeed = Partial<Expense> &
+  Pick<Expense, 'id' | 'description' | 'category' | 'amount' | 'date'>
+
+function makeExpense(seed: ExpenseSeed): Expense {
+  return {
+    paid: false,
+    third_party: false,
+    series_id: null,
+    series_index: null,
+    series_total: null,
+    ...seed,
+  }
+}
+
 const mockExpenses: Expense[] = [
-  {
+  makeExpense({
     id: '1',
     description: 'Aluguel',
     category: 'contas',
     amount: 1500,
     date: '2026-08-05',
     paid: true,
-  },
-  {
+  }),
+  makeExpense({
     id: '2',
     description: 'Fatura do cartão',
     category: 'cartao',
     amount: 3090.5,
     date: '2026-08-10',
-    paid: false,
-  },
-  {
+  }),
+  makeExpense({
     id: '3',
     description: 'Combustível',
     category: 'carro',
     amount: 320,
     date: '2026-08-15',
     paid: true,
-  },
-  {
+  }),
+  makeExpense({
     id: '4',
+    description: 'Compras da irmã',
+    category: 'cartao',
+    amount: 280,
+    date: '2026-08-16',
+    third_party: true,
+  }),
+  makeExpense({
+    id: '5',
     description: 'Supermercado',
     category: 'contas',
     amount: 640,
     date: '2026-07-20',
     paid: true,
-  },
-  {
-    id: '5',
-    description: 'Manutenção do carro',
-    category: 'carro',
-    amount: 450,
-    date: '2026-07-12',
-    paid: true,
-  },
-  {
+  }),
+  makeExpense({
     id: '6',
     description: 'Conserto do carro',
     category: 'carro',
     amount: 4200,
     date: '2026-06-08',
-    paid: false,
-  },
-  {
+  }),
+  makeExpense({
     id: '7',
     description: 'Aluguel',
     category: 'contas',
     amount: 1500,
     date: '2026-06-05',
     paid: true,
-  },
-  ...cheapExpenseTemplates.map((item, index) => ({
-    id: `cheap-expense-${index + 1}`,
-    description: item.description,
-    category: item.category,
-    amount: item.amount,
-    date: `2026-08-${item.day}`,
-    paid: index % 3 !== 0,
-  })),
+  }),
+  ...cheapExpenseTemplates.map((item, index) =>
+    makeExpense({
+      id: `cheap-expense-${index + 1}`,
+      description: item.description,
+      category: item.category,
+      amount: item.amount,
+      date: `2026-08-${item.day}`,
+      paid: index % 3 !== 0,
+    }),
+  ),
 ]
 
 const mockIncome: Income[] = [
-  {
-    id: '1',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 6500,
-    date: '2026-08-05',
-  },
-  {
-    id: '2',
-    description: 'Freelance',
-    account: 'Inter',
-    category: 'pagamento',
-    amount: 1200,
-    date: '2026-08-18',
-  },
-  {
-    id: '3',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 3200,
-    date: '2026-06-05',
-  },
-  {
-    id: '4',
-    description: 'Salário',
-    account: 'Nubank',
-    category: 'salario',
-    amount: 950,
-    date: '2026-07-05',
-  },
+  { id: '1', description: 'Salário', category: 'salario', amount: 6500, date: '2026-08-05' },
+  { id: '2', description: 'Freelance', category: 'pagamento', amount: 1200, date: '2026-08-18' },
+  { id: '3', description: 'Salário', category: 'salario', amount: 3200, date: '2026-06-05' },
+  { id: '4', description: 'Salário', category: 'salario', amount: 950, date: '2026-07-05' },
   ...cheapIncomeTemplates.map((item, index) => ({
     id: `cheap-income-${index + 1}`,
     description: item.description,
-    account: item.account,
     category: item.category,
     amount: item.amount,
     date: `2026-08-${item.day}`,
@@ -176,6 +165,14 @@ function filterByPeriod<T extends { date: string }>(items: T[], params: unknown)
   const { month, year } = (params ?? {}) as { month?: number; year?: number }
   if (!month || !year) return items
   return items.filter((item) => isInMonth(item.date, Number(month), Number(year)))
+}
+
+function addMonths(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  const day = d.getUTCDate()
+  d.setUTCMonth(d.getUTCMonth() + n)
+  if (d.getUTCDate() < day) d.setUTCDate(0)
+  return d.toISOString().slice(0, 10)
 }
 
 const OWNER_EMAIL = import.meta.env.VITE_OWNER_EMAIL ?? 'gsadriel@gmail.com'
@@ -222,9 +219,30 @@ export function enableApiMock() {
   mock.onGet('/income/').reply((config) => [200, filterByPeriod(mockIncome, config.params)])
 
   mock.onPost('/expenses/').reply((config) => {
-    const expense = { id: `expense-${Date.now()}`, ...JSON.parse(config.data) }
-    mockExpenses.push(expense)
-    return [200, expense]
+    const { repeat_months: repeat, ...fields } = JSON.parse(config.data)
+
+    if (!repeat || repeat === 1) {
+      const expense = makeExpense({ ...fields, id: `expense-${Date.now()}` })
+      mockExpenses.push(expense)
+      return [200, [expense]]
+    }
+
+    const seriesId = `series-${Date.now()}`
+    const indefinite = repeat === null
+    const count = indefinite ? 60 : repeat
+    const rows = Array.from({ length: count }, (_, i) =>
+      makeExpense({
+        ...fields,
+        id: `expense-${Date.now()}-${i}`,
+        date: addMonths(fields.date, i),
+        paid: false,
+        series_id: seriesId,
+        series_index: i + 1,
+        series_total: indefinite ? null : count,
+      }),
+    )
+    mockExpenses.push(...rows)
+    return [200, rows]
   })
 
   mock.onPost('/income/').reply((config) => {
@@ -253,10 +271,25 @@ export function enableApiMock() {
 
   mock.onDelete(/\/expenses\/[^/]+$/).reply((config) => {
     const id = config.url!.split('/').filter(Boolean).pop()
-    const index = mockExpenses.findIndex((item) => item.id === id)
-    if (index === -1) return [404]
+    const scope = (config.params?.scope as string) ?? 'this'
+    const target = mockExpenses.find((item) => item.id === id)
+    if (!target) return [404]
 
-    mockExpenses.splice(index, 1)
+    let remove: Set<string>
+    if (scope === 'this' || !target.series_id) {
+      remove = new Set([target.id])
+    } else {
+      const inSeries = mockExpenses.filter((item) => item.series_id === target.series_id)
+      const picked =
+        scope === 'future'
+          ? inSeries.filter((item) => (item.series_index ?? 0) >= (target.series_index ?? 0))
+          : inSeries
+      remove = new Set(picked.map((item) => item.id))
+    }
+
+    for (let i = mockExpenses.length - 1; i >= 0; i--) {
+      if (remove.has(mockExpenses[i].id)) mockExpenses.splice(i, 1)
+    }
     return [204]
   })
 
@@ -274,16 +307,21 @@ export function enableApiMock() {
     const monthExpenses = filterByPeriod(mockExpenses, { month: Number(month), year: Number(year) })
     const monthIncome = filterByPeriod(mockIncome, { month: Number(month), year: Number(year) })
     const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amount, 0)
+    const thirdPartyExpenses = monthExpenses
+      .filter((item) => item.third_party)
+      .reduce((sum, item) => sum + item.amount, 0)
     const totalIncome = monthIncome.reduce((sum, item) => sum + item.amount, 0)
-    const netSavings = totalIncome - totalExpenses
+    const netSavings = totalIncome - (totalExpenses - thirdPartyExpenses)
 
     const start = new Date(Date.UTC(Number(year), Number(month) - 1, 1))
-    const openingBalance = sumBefore(mockIncome, start) - sumBefore(mockExpenses, start)
+    const ownExpensesBefore = mockExpenses.filter((item) => !item.third_party)
+    const openingBalance = sumBefore(mockIncome, start) - sumBefore(ownExpensesBefore, start)
 
     return [
       200,
       {
         total_expenses: totalExpenses,
+        third_party_expenses: thirdPartyExpenses,
         total_income: totalIncome,
         net_savings: netSavings,
         expenses_by_category: groupByCategory(monthExpenses),

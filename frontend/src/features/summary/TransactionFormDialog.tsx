@@ -14,13 +14,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from '@/components/ui/toast'
 import {
-  EXPENSE_CATEGORIES,
-  getCategoryLabel,
-  INCOME_CATEGORIES,
-} from '@/shared/config/categories'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from '@/components/ui/toast'
+import { EXPENSE_CATEGORIES, getCategoryLabel, INCOME_CATEGORIES } from '@/shared/config/categories'
 import type {
   Expense,
   ExpenseCategory,
@@ -44,19 +46,23 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
   const [date, setDate] = useState(todayISO())
   const [category, setCategory] = useState<string>(categories[0])
   const [amount, setAmount] = useState('')
-  const [account, setAccount] = useState('')
   const [paid, setPaid] = useState(false)
+  const [thirdParty, setThirdParty] = useState(false)
+  const [repeatMonths, setRepeatMonths] = useState('1')
+  const [indefinite, setIndefinite] = useState(false)
 
   function resetForm() {
     setDescription('')
     setDate(todayISO())
     setCategory(categories[0])
     setAmount('')
-    setAccount('')
     setPaid(false)
+    setThirdParty(false)
+    setRepeatMonths('1')
+    setIndefinite(false)
   }
 
-  const createTransaction = useMutation<Expense | Income, Error, void>({
+  const createTransaction = useMutation<Expense[] | Income, Error, void>({
     mutationFn: () => {
       const parsedAmount = Number(amount.replace(',', '.'))
       if (type === 'income') {
@@ -65,7 +71,6 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
           date,
           category: category as IncomeCategory,
           amount: parsedAmount,
-          account,
         })
       }
       return createExpense({
@@ -74,6 +79,8 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
         category: category as ExpenseCategory,
         amount: parsedAmount,
         paid,
+        third_party: thirdParty,
+        repeat_months: indefinite ? null : Math.max(1, Number(repeatMonths) || 1),
       })
     },
     onSuccess: () => {
@@ -94,10 +101,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
   })
 
   const parsedAmount = Number(amount.replace(',', '.'))
-  const isValid =
-    description.trim().length > 0 &&
-    Number.isFinite(parsedAmount) &&
-    (type === 'expense' || account.trim().length > 0)
+  const isValid = description.trim().length > 0 && Number.isFinite(parsedAmount)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -167,7 +171,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={type === 'expense' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-1'}>
             <div className="flex flex-col gap-1">
               <Label htmlFor="amount">Valor</Label>
               <Input
@@ -178,16 +182,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
                 onChange={(event) => setAmount(event.target.value)}
               />
             </div>
-            {type === 'income' ? (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="account">Conta</Label>
-                <Input
-                  id="account"
-                  value={account}
-                  onChange={(event) => setAccount(event.target.value)}
-                />
-              </div>
-            ) : (
+            {type === 'expense' && (
               <div className="flex flex-col gap-1">
                 <Label>Status</Label>
                 <PaidCheckbox
@@ -199,6 +194,38 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
               </div>
             )}
           </div>
+
+          {type === 'expense' && (
+            <>
+              <PaidCheckbox
+                state={thirdParty ? 'checked' : 'unchecked'}
+                onClick={() => setThirdParty((prev) => !prev)}
+                label="Compra de terceiro"
+              />
+              <div className="flex items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="repeat">Repetir por</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="repeat"
+                      inputMode="numeric"
+                      className="w-20"
+                      value={indefinite ? '' : repeatMonths}
+                      disabled={indefinite}
+                      onChange={(event) => setRepeatMonths(event.target.value)}
+                    />
+                    <span className="text-sm text-zinc-400">meses</span>
+                  </div>
+                </div>
+                <PaidCheckbox
+                  state={indefinite ? 'checked' : 'unchecked'}
+                  onClick={() => setIndefinite((prev) => !prev)}
+                  label="Indefinido"
+                  className="h-8"
+                />
+              </div>
+            </>
+          )}
 
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancelar</DialogClose>

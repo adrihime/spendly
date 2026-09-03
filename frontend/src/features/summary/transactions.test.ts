@@ -9,13 +9,16 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
   amount: 1500,
   date: '2026-08-05',
   paid: true,
+  third_party: false,
+  series_id: null,
+  series_index: null,
+  series_total: null,
   ...over,
 })
 
 const income = (over: Partial<Income> = {}): Income => ({
   id: '1',
   description: 'Salário',
-  account: 'Nubank',
   category: 'salario',
   amount: 6500,
   date: '2026-08-05',
