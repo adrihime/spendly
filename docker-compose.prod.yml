@@ -1,20 +1,22 @@
+name: spendly
+
 services:
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       - DATABASE_URL=sqlite:////data/spendly.db
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - OWNER_EMAIL=${OWNER_EMAIL}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:?set it in .env}
+      - OWNER_EMAIL=${OWNER_EMAIL:?set it in .env}
+      - SESSION_SECRET=${SESSION_SECRET:?set it in .env}
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:?set it in .env}
     volumes:
       - spendly-data:/data
     restart: unless-stopped
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set it in .env}
     depends_on:
       - backend
     restart: unless-stopped
