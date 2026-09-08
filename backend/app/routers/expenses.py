@@ -1,20 +1,24 @@
 from datetime import date
 from enum import Enum
 from typing import List
-from uuid import UUID, uuid4
+from uuid import UUID
 
-from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.database import get_session
 from app.deps import period
-from app.models import Expense, ExpenseCreate, ExpenseNew
+from app.models import Expense, ExpenseCreate, ExpenseNew, RecurringRule
+from app.recurrence import (
+    apply_series_delete,
+    ensure_materialized_lazy,
+    horizon,
+    materialize_rule,
+    month_start,
+)
 from app.routers.auth import require_user
 
 router = APIRouter(prefix="/expenses", tags=["expenses"], dependencies=[Depends(require_user)])
-
-INDEFINITE_MONTHS = 60
 
 
 class Scope(str, Enum):
@@ -28,6 +32,7 @@ def list_expenses(
     session: Session = Depends(get_session),
     bounds: tuple[date, date] | None = Depends(period),
 ):
+    ensure_materialized_lazy(session, bounds[1] if bounds else None)
     statement = select(Expense)
     if bounds:
         statement = statement.where(Expense.date >= bounds[0], Expense.date < bounds[1])
@@ -44,37 +49,36 @@ def get_expense(expense_id: UUID, session: Session = Depends(get_session)):
 
 @router.post("/", response_model=List[Expense])
 def create_expense(payload: ExpenseNew, session: Session = Depends(get_session)):
-    fields = payload.model_dump(exclude={"repeat_months"})
     repeat = payload.repeat_months
 
     if repeat == 1:
-        row = Expense(**fields)
+        row = Expense(**payload.model_dump(exclude={"repeat_months"}))
         session.add(row)
         session.commit()
         session.refresh(row)
         return [row]
 
-    series_id = uuid4()
-    indefinite = repeat is None
-    count = INDEFINITE_MONTHS if indefinite else repeat
-    rows = [
-        Expense(
-            **{
-                **fields,
-                "date": payload.date + relativedelta(months=i),
-                "paid": False,
-                "series_id": series_id,
-                "series_index": i + 1,
-                "series_total": None if indefinite else count,
-            }
-        )
-        for i in range(count)
-    ]
-    session.add_all(rows)
+    rule = RecurringRule(
+        kind="expense",
+        description=payload.description,
+        amount=payload.amount,
+        category=payload.category,
+        third_party=payload.third_party,
+        day_of_month=payload.date.day,
+        start_month=month_start(payload.date),
+        first_index=1,
+        total_occurrences=None if repeat is None else repeat,
+    )
+    session.add(rule)
+    session.flush()
+    materialize_rule(session, rule, horizon())
     session.commit()
-    for row in rows:
-        session.refresh(row)
-    return rows
+
+    return session.exec(
+        select(Expense)
+        .where(Expense.series_id == rule.id)
+        .order_by(Expense.series_index)
+    ).all()
 
 
 @router.put("/{expense_id}", response_model=Expense)
@@ -84,6 +88,8 @@ def update_expense(expense_id: UUID, expense: ExpenseCreate, session: Session = 
         raise HTTPException(status_code=404, detail="Expense not found")
     for key, value in expense.model_dump().items():
         setattr(db_expense, key, value)
+    if db_expense.series_id is not None:
+        db_expense.detached = True
     session.add(db_expense)
     session.commit()
     session.refresh(db_expense)
@@ -100,14 +106,5 @@ def delete_expense(
     if not db_expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    if scope == Scope.this or db_expense.series_id is None:
-        targets = [db_expense]
-    else:
-        statement = select(Expense).where(Expense.series_id == db_expense.series_id)
-        if scope == Scope.future:
-            statement = statement.where(Expense.series_index >= db_expense.series_index)
-        targets = session.exec(statement).all()
-
-    for target in targets:
-        session.delete(target)
+    apply_series_delete(session, Expense, db_expense, scope.value)
     session.commit()

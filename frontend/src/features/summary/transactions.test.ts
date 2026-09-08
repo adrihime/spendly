@@ -13,6 +13,7 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
   series_id: null,
   series_index: null,
   series_total: null,
+  detached: false,
   ...over,
 })
 
@@ -22,6 +23,10 @@ const income = (over: Partial<Income> = {}): Income => ({
   category: 'salario',
   amount: 6500,
   date: '2026-08-05',
+  series_id: null,
+  series_index: null,
+  series_total: null,
+  detached: false,
   ...over,
 })
 

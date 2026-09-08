@@ -32,7 +32,8 @@ import { deleteExpense, deleteIncome, updateExpense, updateIncome } from './api'
 import { expenseKeys, incomeKeys } from './keys'
 import { EditableCell } from './EditableCell'
 import { PaidCheckbox } from './PaidCheckbox'
-import { Copy, Trash } from 'lucide-react'
+import { SeriesEditDialog } from './SeriesEditDialog'
+import { Copy, Repeat, Trash } from 'lucide-react'
 
 interface TransactionPatch {
   description?: string
@@ -52,11 +53,11 @@ export function TransactionRow({
 }) {
   const queryClient = useQueryClient()
   const [seriesDeleteOpen, setSeriesDeleteOpen] = useState(false)
+  const [seriesEditOpen, setSeriesEditOpen] = useState(false)
 
-  const series =
-    transaction.type === 'expense' && transaction.series_id
-      ? { index: transaction.series_index, total: transaction.series_total }
-      : null
+  const series = transaction.series_id
+    ? { index: transaction.series_index, total: transaction.series_total }
+    : null
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: expenseKeys.all })
@@ -114,7 +115,7 @@ export function TransactionRow({
   const deleteTransaction = useMutation<void, Error, SeriesScope>({
     mutationFn: (scope) => {
       return transaction.type === 'income'
-        ? deleteIncome(transaction.id)
+        ? deleteIncome(transaction.id, scope)
         : deleteExpense(transaction.id, scope)
     },
     onSuccess: () => {
@@ -246,6 +247,19 @@ export function TransactionRow({
           </TooltipContent>
         </Tooltip>
       )}
+      {series && (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Repeat
+                onClick={() => setSeriesEditOpen(true)}
+                className="w-4 h-4 cursor-pointer hover:text-zinc-200"
+              />
+            }
+          />
+          <TooltipContent>Editar recorrência</TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger render={<Copy onClick={copyAmount} className="w-4 h-4 cursor-pointer" />} />
         <TooltipContent>Copiar valor</TooltipContent>
@@ -273,7 +287,7 @@ export function TransactionRow({
     <Dialog open={seriesDeleteOpen} onOpenChange={setSeriesDeleteOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir despesa recorrente</DialogTitle>
+          <DialogTitle>Excluir recorrência</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-zinc-400">{transaction.description}</p>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
@@ -302,6 +316,9 @@ export function TransactionRow({
   return (
     <>
       {seriesDeleteDialog}
+      {series && seriesEditOpen && (
+        <SeriesEditDialog transaction={transaction} onClose={() => setSeriesEditOpen(false)} />
+      )}
       <div
         className={cn(
           'flex flex-col gap-1 border-b border-zinc-800 px-4 py-3 text-base hover:bg-zinc-800 transition-colors md:hidden',

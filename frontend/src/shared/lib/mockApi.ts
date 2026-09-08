@@ -1,6 +1,12 @@
 import MockAdapter from 'axios-mock-adapter'
 import { api } from './axios'
-import type { Expense, ExpenseCategory, Income, IncomeCategory } from '@/shared/types/transaction'
+import type {
+  Expense,
+  ExpenseCategory,
+  Income,
+  IncomeCategory,
+  RecurringRule,
+} from '@/shared/types/transaction'
 
 const cheapExpenseTemplates: Array<{
   description: string
@@ -58,9 +64,25 @@ function makeExpense(seed: ExpenseSeed): Expense {
     series_id: null,
     series_index: null,
     series_total: null,
+    detached: false,
     ...seed,
   }
 }
+
+type IncomeSeed = Partial<Income> &
+  Pick<Income, 'id' | 'description' | 'category' | 'amount' | 'date'>
+
+function makeIncome(seed: IncomeSeed): Income {
+  return {
+    series_id: null,
+    series_index: null,
+    series_total: null,
+    detached: false,
+    ...seed,
+  }
+}
+
+const mockRules: RecurringRule[] = []
 
 const mockExpenses: Expense[] = [
   makeExpense({
@@ -130,17 +152,19 @@ const mockExpenses: Expense[] = [
 ]
 
 const mockIncome: Income[] = [
-  { id: '1', description: 'Salário', category: 'salario', amount: 6500, date: '2026-08-05' },
-  { id: '2', description: 'Freelance', category: 'pagamento', amount: 1200, date: '2026-08-18' },
-  { id: '3', description: 'Salário', category: 'salario', amount: 3200, date: '2026-06-05' },
-  { id: '4', description: 'Salário', category: 'salario', amount: 950, date: '2026-07-05' },
-  ...cheapIncomeTemplates.map((item, index) => ({
-    id: `cheap-income-${index + 1}`,
-    description: item.description,
-    category: item.category,
-    amount: item.amount,
-    date: `2026-08-${item.day}`,
-  })),
+  makeIncome({ id: '1', description: 'Salário', category: 'salario', amount: 6500, date: '2026-08-05' }),
+  makeIncome({ id: '2', description: 'Freelance', category: 'pagamento', amount: 1200, date: '2026-08-18' }),
+  makeIncome({ id: '3', description: 'Salário', category: 'salario', amount: 3200, date: '2026-06-05' }),
+  makeIncome({ id: '4', description: 'Salário', category: 'salario', amount: 950, date: '2026-07-05' }),
+  ...cheapIncomeTemplates.map((item, index) =>
+    makeIncome({
+      id: `cheap-income-${index + 1}`,
+      description: item.description,
+      category: item.category,
+      amount: item.amount,
+      date: `2026-08-${item.day}`,
+    }),
+  ),
 ]
 
 function isInMonth(date: string, month: number, year: number) {
@@ -173,6 +197,51 @@ function addMonths(dateStr: string, n: number): string {
   d.setUTCMonth(d.getUTCMonth() + n)
   if (d.getUTCDate() < day) d.setUTCDate(0)
   return d.toISOString().slice(0, 10)
+}
+
+const MOCK_HORIZON = 18
+
+function buildSeries<T extends { date: string }>(
+  fields: Record<string, unknown>,
+  repeat: number | null,
+  make: (seed: Record<string, unknown>) => T,
+): { rows: T[]; seriesId: string; total: number | null } {
+  const seriesId = `series-${Date.now()}`
+  const indefinite = repeat === null
+  const count = indefinite ? MOCK_HORIZON : (repeat as number)
+  const rows = Array.from({ length: count }, (_, i) =>
+    make({
+      ...fields,
+      id: `${seriesId}-${i + 1}`,
+      date: addMonths(fields.date as string, i),
+      paid: false,
+      series_id: seriesId,
+      series_index: i + 1,
+      series_total: indefinite ? null : count,
+    }),
+  )
+  return { rows, seriesId, total: indefinite ? null : count }
+}
+
+function registerRule(
+  seriesId: string,
+  kind: 'expense' | 'income',
+  fields: Record<string, unknown>,
+  total: number | null,
+) {
+  mockRules.push({
+    id: seriesId,
+    kind,
+    description: fields.description as string,
+    amount: fields.amount as number,
+    category: fields.category as string,
+    third_party: Boolean(fields.third_party),
+    day_of_month: Number((fields.date as string).slice(8, 10)),
+    start_month: (fields.date as string).slice(0, 7) + '-01',
+    first_index: 1,
+    total_occurrences: total,
+    end_month: null,
+  })
 }
 
 const OWNER_EMAIL = import.meta.env.VITE_OWNER_EMAIL ?? 'gsadriel@gmail.com'
@@ -227,28 +296,53 @@ export function enableApiMock() {
       return [200, [expense]]
     }
 
-    const seriesId = `series-${Date.now()}`
-    const indefinite = repeat === null
-    const count = indefinite ? 60 : repeat
-    const rows = Array.from({ length: count }, (_, i) =>
-      makeExpense({
-        ...fields,
-        id: `expense-${Date.now()}-${i}`,
-        date: addMonths(fields.date, i),
-        paid: false,
-        series_id: seriesId,
-        series_index: i + 1,
-        series_total: indefinite ? null : count,
-      }),
+    const { rows, seriesId, total } = buildSeries(fields, repeat, (seed) =>
+      makeExpense(seed as ExpenseSeed),
     )
     mockExpenses.push(...rows)
+    registerRule(seriesId, 'expense', fields, total)
     return [200, rows]
   })
 
   mock.onPost('/income/').reply((config) => {
-    const income = { id: `income-${Date.now()}`, ...JSON.parse(config.data) }
-    mockIncome.push(income)
-    return [200, income]
+    const { repeat_months: repeat, ...fields } = JSON.parse(config.data)
+
+    if (!repeat || repeat === 1) {
+      const income = makeIncome({ ...fields, id: `income-${Date.now()}` })
+      mockIncome.push(income)
+      return [200, [income]]
+    }
+
+    const { rows, seriesId, total } = buildSeries(fields, repeat, (seed) =>
+      makeIncome(seed as IncomeSeed),
+    )
+    mockIncome.push(...rows)
+    registerRule(seriesId, 'income', fields, total)
+    return [200, rows]
+  })
+
+  mock.onGet('/rules/').reply(() => [200, mockRules])
+
+  mock.onPatch(/\/rules\/[^/]+$/).reply((config) => {
+    const id = config.url!.split('/').filter(Boolean).pop()
+    const scope = (config.params?.scope as string) ?? 'future'
+    const rule = mockRules.find((r) => r.id === id)
+    if (!rule) return [404]
+
+    const patch = JSON.parse(config.data) as Partial<RecurringRule>
+    Object.assign(rule, patch)
+
+    const rows = rule.kind === 'income' ? mockIncome : mockExpenses
+    const nowMonth = new Date().toISOString().slice(0, 7)
+    for (const row of rows) {
+      if (row.series_id !== id || row.detached) continue
+      if (scope === 'future' && row.date.slice(0, 7) < nowMonth) continue
+      if (scope === 'future' && 'paid' in row && row.paid) continue
+      if (patch.description !== undefined) row.description = patch.description
+      if (patch.amount !== undefined) row.amount = patch.amount
+      if (patch.category !== undefined) row.category = patch.category as never
+    }
+    return [200, rule]
   })
 
   mock.onPut(/\/expenses\/[^/]+$/).reply((config) => {
@@ -256,7 +350,13 @@ export function enableApiMock() {
     const index = mockExpenses.findIndex((item) => item.id === id)
     if (index === -1) return [404]
 
-    mockExpenses[index] = { ...mockExpenses[index], ...JSON.parse(config.data), id }
+    const current = mockExpenses[index]
+    mockExpenses[index] = {
+      ...current,
+      ...JSON.parse(config.data),
+      id,
+      detached: current.series_id ? true : current.detached,
+    }
     return [200, mockExpenses[index]]
   })
 
@@ -265,7 +365,13 @@ export function enableApiMock() {
     const index = mockIncome.findIndex((item) => item.id === id)
     if (index === -1) return [404]
 
-    mockIncome[index] = { ...mockIncome[index], ...JSON.parse(config.data), id }
+    const current = mockIncome[index]
+    mockIncome[index] = {
+      ...current,
+      ...JSON.parse(config.data),
+      id,
+      detached: current.series_id ? true : current.detached,
+    }
     return [200, mockIncome[index]]
   })
 
@@ -295,10 +401,25 @@ export function enableApiMock() {
 
   mock.onDelete(/\/income\/[^/]+$/).reply((config) => {
     const id = config.url!.split('/').filter(Boolean).pop()
-    const index = mockIncome.findIndex((item) => item.id === id)
-    if (index === -1) return [404]
+    const scope = (config.params?.scope as string) ?? 'this'
+    const target = mockIncome.find((item) => item.id === id)
+    if (!target) return [404]
 
-    mockIncome.splice(index, 1)
+    let remove: Set<string>
+    if (scope === 'this' || !target.series_id) {
+      remove = new Set([target.id])
+    } else {
+      const inSeries = mockIncome.filter((item) => item.series_id === target.series_id)
+      const picked =
+        scope === 'future'
+          ? inSeries.filter((item) => (item.series_index ?? 0) >= (target.series_index ?? 0))
+          : inSeries
+      remove = new Set(picked.map((item) => item.id))
+    }
+
+    for (let i = mockIncome.length - 1; i >= 0; i--) {
+      if (remove.has(mockIncome[i].id)) mockIncome.splice(i, 1)
+    }
     return [204]
   })
 
