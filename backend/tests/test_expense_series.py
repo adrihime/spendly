@@ -30,12 +30,14 @@ def test_fixed_series_generates_one_row_per_month(client):
     assert all(r["paid"] is False for r in rows)
 
 
-def test_indefinite_series_fills_a_window_with_no_total(client):
-    rows = create(client, repeat_months=None)
+def test_indefinite_series_fills_a_rolling_window_with_no_total(client):
+    rows = create(client, date="2026-09-10", repeat_months=None)
 
-    assert len(rows) == 60
+    assert len(rows) >= 12
+    assert rows[0]["date"] == "2026-09-10"
     assert all(r["series_total"] is None for r in rows)
     assert all(r["series_id"] == rows[0]["series_id"] for r in rows)
+    assert [r["series_index"] for r in rows] == list(range(1, len(rows) + 1))
 
 
 def test_series_lands_in_the_right_months(client):

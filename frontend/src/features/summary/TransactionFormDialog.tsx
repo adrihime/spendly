@@ -62,15 +62,17 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
     setIndefinite(false)
   }
 
-  const createTransaction = useMutation<Expense[] | Income, Error, void>({
+  const createTransaction = useMutation<Expense[] | Income[], Error, void>({
     mutationFn: () => {
       const parsedAmount = Number(amount.replace(',', '.'))
+      const repeat_months = indefinite ? null : Math.max(1, Number(repeatMonths) || 1)
       if (type === 'income') {
         return createIncome({
           description,
           date,
           category: category as IncomeCategory,
           amount: parsedAmount,
+          repeat_months,
         })
       }
       return createExpense({
@@ -80,7 +82,7 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
         amount: parsedAmount,
         paid,
         third_party: thirdParty,
-        repeat_months: indefinite ? null : Math.max(1, Number(repeatMonths) || 1),
+        repeat_months,
       })
     },
     onSuccess: () => {
@@ -196,36 +198,35 @@ export function TransactionFormDialog({ type }: { type: TransactionType }) {
           </div>
 
           {type === 'expense' && (
-            <>
-              <PaidCheckbox
-                state={thirdParty ? 'checked' : 'unchecked'}
-                onClick={() => setThirdParty((prev) => !prev)}
-                label="Compra de terceiro"
-              />
-              <div className="flex items-end gap-3">
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="repeat">Repetir por</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="repeat"
-                      inputMode="numeric"
-                      className="w-20"
-                      value={indefinite ? '' : repeatMonths}
-                      disabled={indefinite}
-                      onChange={(event) => setRepeatMonths(event.target.value)}
-                    />
-                    <span className="text-sm text-zinc-400">meses</span>
-                  </div>
-                </div>
-                <PaidCheckbox
-                  state={indefinite ? 'checked' : 'unchecked'}
-                  onClick={() => setIndefinite((prev) => !prev)}
-                  label="Indefinido"
-                  className="h-8"
-                />
-              </div>
-            </>
+            <PaidCheckbox
+              state={thirdParty ? 'checked' : 'unchecked'}
+              onClick={() => setThirdParty((prev) => !prev)}
+              label="Compra de terceiro"
+            />
           )}
+
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="repeat">Repetir por</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="repeat"
+                  inputMode="numeric"
+                  className="w-20"
+                  value={indefinite ? '' : repeatMonths}
+                  disabled={indefinite}
+                  onChange={(event) => setRepeatMonths(event.target.value)}
+                />
+                <span className="text-sm text-zinc-400">meses</span>
+              </div>
+            </div>
+            <PaidCheckbox
+              state={indefinite ? 'checked' : 'unchecked'}
+              onClick={() => setIndefinite((prev) => !prev)}
+              label="Indefinido"
+              className="h-8"
+            />
+          </div>
 
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>Cancelar</DialogClose>

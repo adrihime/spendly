@@ -6,6 +6,7 @@ from sqlmodel import Session, func, select
 from app.database import get_session
 from app.models import Expense, Income, Summary
 from app.queries import month_bounds
+from app.recurrence import ensure_materialized_lazy
 from app.routers.auth import require_user
 
 router = APIRouter(prefix="/summary", tags=["summary"], dependencies=[Depends(require_user)])
@@ -44,6 +45,7 @@ def get_summary(
     session: Session = Depends(get_session),
 ):
     start, end = month_bounds(month, year)
+    ensure_materialized_lazy(session, end)
 
     expenses_by_category = _by_category(session, Expense, start, end)
     income_by_category = _by_category(session, Income, start, end)

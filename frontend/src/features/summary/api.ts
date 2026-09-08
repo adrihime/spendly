@@ -5,6 +5,10 @@ import type {
   ExpenseNew,
   Income,
   IncomeCreate,
+  IncomeNew,
+  RecurringRule,
+  RuleScope,
+  RuleUpdate,
   SeriesScope,
 } from '@/shared/types/transaction'
 
@@ -43,8 +47,8 @@ export async function createExpense(expense: ExpenseNew) {
   return data
 }
 
-export async function createIncome(income: IncomeCreate) {
-  const { data } = await api.post<Income>('/income/', income)
+export async function createIncome(income: IncomeNew) {
+  const { data } = await api.post<Income[]>('/income/', income)
   return data
 }
 
@@ -62,6 +66,20 @@ export async function deleteExpense(id: string, scope: SeriesScope = 'this') {
   await api.delete(`/expenses/${id}`, { params: { scope } })
 }
 
-export async function deleteIncome(id: string) {
-  await api.delete(`/income/${id}`)
+export async function deleteIncome(id: string, scope: SeriesScope = 'this') {
+  await api.delete(`/income/${id}`, { params: { scope } })
+}
+
+export async function listRules() {
+  const { data } = await api.get<RecurringRule[]>('/rules/')
+  return data
+}
+
+export async function updateRule(id: string, patch: RuleUpdate, scope: RuleScope) {
+  const { data } = await api.patch<RecurringRule>(`/rules/${id}`, patch, { params: { scope } })
+  return data
+}
+
+export async function deleteRule(id: string) {
+  await api.delete(`/rules/${id}`)
 }

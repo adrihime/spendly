@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from app.migrate import upgrade_to_head
-from app.routers import auth, expenses, income, summary
+from app.routers import auth, expenses, income, rules, summary
 
 FRONTEND_ORIGINS = [
     origin.strip()
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(expenses.router)
 app.include_router(income.router)
+app.include_router(rules.router)
 app.include_router(summary.router)
 
 
